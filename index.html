@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML Course Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --surface3: #1e1e28;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f8;
+    --text2: #8888aa;
+    --text3: #555570;
+    --accent1: #7c6cff;
+    --accent1-dim: rgba(124,108,255,0.15);
+    --accent2: #3dffd0;
+    --accent2-dim: rgba(61,255,208,0.12);
+    --accent3: #ff6c8a;
+    --accent3-dim: rgba(255,108,138,0.12);
+    --accent4: #ffb347;
+    --accent4-dim: rgba(255,179,71,0.12);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,108,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,108,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-orb {
+    position: fixed; width: 600px; height: 600px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(124,108,255,0.08) 0%, transparent 70%);
+    top: -200px; left: -200px; pointer-events: none; z-index: 0;
+  }
+  .glow-orb2 {
+    position: fixed; width: 400px; height: 400px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(61,255,208,0.06) 0%, transparent 70%);
+    bottom: -100px; right: -100px; pointer-events: none; z-index: 0;
+  }
+  .container {
+    position: relative; z-index: 1;
+    max-width: 920px; margin: 0 auto; padding: 2rem 1.5rem 4rem;
+  }
+  header { text-align: center; padding: 3rem 0 2.5rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+  .header-label {
+    display: inline-block; font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--accent1);
+    background: var(--accent1-dim); border: 1px solid rgba(124,108,255,0.25);
+    border-radius: 20px; padding: 4px 14px; margin-bottom: 1.2rem;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif; font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;
+    color: var(--text); margin-bottom: 0.6rem;
+  }
+  h1 span {
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .header-sub { font-size: 13px; color: var(--text2); margin-bottom: 2rem; letter-spacing: 0.02em; }
+  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 2rem; }
+  .stat-pill {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 22px; text-align: center; min-width: 100px;
+  }
+  .stat-pill .val { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; display: block; }
+  .stat-pill .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+  .stat-pill.done .val { color: var(--accent2); }
+  .stat-pill.progress .val { color: var(--accent1); }
+  .global-progress {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 18px; margin-bottom: 2rem; display: flex; align-items: center; gap: 14px;
+  }
+  .progress-label { font-size: 11px; color: var(--text3); white-space: nowrap; letter-spacing: 0.05em; }
+  .progress-bar-wrap { flex: 1; height: 6px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
+  .progress-bar-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent1), var(--accent2));
+    border-radius: 99px; transition: width 0.4s ease; width: 0%;
+  }
+  .progress-pct { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; color: var(--accent2); min-width: 36px; text-align: right; }
+  .controls-row { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .search-wrap { flex: 1; min-width: 200px; position: relative; }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 15px; }
+  .search-input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 13px;
+    padding: 9px 12px 9px 34px; outline: none; transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--accent1); }
+  .search-input::placeholder { color: var(--text3); }
+  .filter-btn {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text2); font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 9px 14px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.03em;
+  }
+  .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+  .filter-btn.active { background: var(--accent1-dim); border-color: var(--accent1); color: var(--accent1); }
+  .add-section {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; margin-bottom: 2rem; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  }
+  .add-input {
+    flex: 1; min-width: 180px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px;
+    padding: 8px 12px; outline: none; transition: border-color 0.15s;
+  }
+  .add-input:focus { border-color: var(--accent1); }
+  .add-input::placeholder { color: var(--text3); }
+  .add-select {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text2); font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 8px 12px; outline: none; cursor: pointer;
+  }
+  .add-btn {
+    background: var(--accent1-dim); border: 1px solid rgba(124,108,255,0.3);
+    border-radius: var(--radius-sm); color: var(--accent1);
+    font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+    padding: 8px 18px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.05em; white-space: nowrap;
+  }
+  .add-btn:hover { background: rgba(124,108,255,0.25); }
+  .phase-section { margin-bottom: 2.2rem; }
+  .phase-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 0 2px; }
+  .phase-number { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; padding: 3px 10px; border-radius: 4px; }
+  .phase-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+  .phase-count { font-size: 11px; color: var(--text3); letter-spacing: 0.05em; }
+  .phase-line { height: 1px; background: var(--border); margin-bottom: 10px; }
+  .course-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 11px 14px; margin-bottom: 6px;
+    transition: border-color 0.15s, opacity 0.2s; animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+  .course-item:hover { border-color: var(--border2); }
+  .course-item.done { opacity: 0.42; }
+  .course-item.done .course-name { text-decoration: line-through; color: var(--text3); }
+  .tick-btn {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid var(--border2); background: transparent;
+    cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .tick-btn:hover { border-color: var(--accent2); }
+  .tick-btn.checked { background: var(--accent2); border-color: var(--accent2); }
+  .tick-btn.checked::after {
+    content: ''; width: 4px; height: 8px;
+    border: 1.5px solid #0a0a0f; border-top: none; border-left: none;
+    transform: rotate(45deg) translateY(-1px); display: block;
+  }
+  .course-num { font-size: 10px; color: var(--text3); min-width: 22px; letter-spacing: 0.05em; flex-shrink: 0; }
+  .course-name { flex: 1; font-size: 13px; color: var(--text); letter-spacing: 0.01em; min-width: 0; word-break: break-word; }
+  .course-item.editing .course-name { display: none; }
+  .edit-field {
+    flex: 1; background: var(--surface2); border: 1px solid var(--accent1);
+    border-radius: 4px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 13px; padding: 4px 8px; outline: none; display: none; min-width: 0;
+  }
+  .course-item.editing .edit-field { display: block; }
+  .action-btns { display: flex; gap: 4px; flex-shrink: 0; }
+  .act-btn {
+    background: transparent; border: 1px solid transparent; border-radius: 4px;
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.05em;
+    padding: 3px 8px; cursor: pointer; transition: all 0.12s; color: var(--text3);
+  }
+  .act-btn:hover { border-color: var(--border2); color: var(--text2); }
+  .act-btn.edit-btn:hover { color: var(--accent1); border-color: rgba(124,108,255,0.3); background: var(--accent1-dim); }
+  .act-btn.save-btn { color: var(--accent2); border-color: rgba(61,255,208,0.3); background: var(--accent2-dim); display: none; }
+  .act-btn.remove-btn:hover { color: var(--accent3); border-color: rgba(255,108,138,0.3); background: var(--accent3-dim); }
+  .course-item.editing .edit-btn { display: none; }
+  .course-item.editing .save-btn { display: block; }
+  .empty-msg { text-align: center; color: var(--text3); font-size: 13px; padding: 2rem; letter-spacing: 0.05em; }
+  footer {
+    text-align: center; font-size: 11px; color: var(--text3);
+    margin-top: 3rem; letter-spacing: 0.08em;
+    border-top: 1px solid var(--border); padding-top: 1.5rem;
+  }
+  @media (max-width: 600px) {
+    .act-btn { font-size: 9px; padding: 3px 5px; }
+    .course-num { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="glow-orb"></div>
+<div class="glow-orb2"></div>
+<div class="container">
+  <header>
+    <div class="header-label">ML YouTube Courses · Arpit Singh</div>
+    <h1>Your <span>Learning</span> Tracker</h1>
+    <p class="header-sub">All courses organized by beginner-friendly order — tick as you go</p>
+    <div class="stats-row">
+      <div class="stat-pill"><span class="val" id="statTotal">0</span><span class="lbl">Total</span></div>
+      <div class="stat-pill done"><span class="val" id="statDone">0</span><span class="lbl">Completed</span></div>
+      <div class="stat-pill"><span class="val" id="statLeft">0</span><span class="lbl">Remaining</span></div>
+      <div class="stat-pill progress"><span class="val" id="statCat">10</span><span class="lbl">Categories</span></div>
+    </div>
+    <div class="global-progress">
+      <span class="progress-label">OVERALL PROGRESS</span>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <span class="progress-pct" id="progressPct">0%</span>
+    </div>
+  </header>
+
+  <div class="controls-row">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input class="search-input" id="searchInput" placeholder="Search courses..." oninput="renderAll()" />
+    </div>
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('pending',this)">Pending</button>
+    <button class="filter-btn" onclick="setFilter('done',this)">Completed</button>
+  </div>
+
+  <div class="add-section">
+    <input class="add-input" id="addName" placeholder="Add a new course name..." />
+    <select class="add-select" id="addCat">
+      <option value="0">Step 1 — Beginner Priority</option>
+      <option value="1">Step 2 — Machine Learning</option>
+      <option value="2">Step 3 — Deep Learning</option>
+      <option value="3">Step 4 — NLP</option>
+      <option value="4">Step 5 — Computer Vision</option>
+      <option value="5">Step 6 — Reinforcement Learning</option>
+      <option value="6">Step 7 — Practical LLM</option>
+      <option value="7">Step 8 — Scientific ML</option>
+      <option value="8">Step 9 — Graph ML</option>
+      <option value="9">Step 10 — Multi-Task & Others</option>
+    </select>
+    <button class="add-btn" onclick="addCourse()">+ Add Course</button>
+  </div>
+
+  <div id="phasesContainer"></div>
+
+  <footer>ML Course Tracker &mdash; All 60 courses from Arpit Singh's curated list &mdash; Organized by beginner learning path</footer>
+</div>
+
+<script>
+const PHASES = [
+  { name: "Beginner Priority — Start Here First", tag: "STEP 1", color: "#7c6cff", bg: "rgba(124,108,255,0.13)" },
+  { name: "Machine Learning", tag: "STEP 2", color: "#3dffd0", bg: "rgba(61,255,208,0.1)" },
+  { name: "Deep Learning", tag: "STEP 3", color: "#ffb347", bg: "rgba(255,179,71,0.1)" },
+  { name: "Natural Language Processing", tag: "STEP 4", color: "#ff6c8a", bg: "rgba(255,108,138,0.1)" },
+  { name: "Computer Vision", tag: "STEP 5", color: "#a78bfa", bg: "rgba(167,139,250,0.1)" },
+  { name: "Reinforcement Learning", tag: "STEP 6", color: "#3dffd0", bg: "rgba(61,255,208,0.08)" },
+  { name: "Practical Machine Learning & LLM Apps", tag: "STEP 7", color: "#ffb347", bg: "rgba(255,179,71,0.08)" },
+  { name: "Scientific Machine Learning", tag: "STEP 8", color: "#ff6c8a", bg: "rgba(255,108,138,0.07)" },
+  { name: "Graph Machine Learning", tag: "STEP 9", color: "#7c6cff", bg: "rgba(124,108,255,0.07)" },
+  { name: "Multi-Task Learning & Others", tag: "STEP 10", color: "#3dffd0", bg: "rgba(61,255,208,0.06)" },
+];
+
+let courses = [
+  // Step 1: Beginner Priority (curated order for absolute beginners)
+  { id:1,  name:"Stanford CS229: Machine Learning", phase:0, done:false },
+  { id:2,  name:"Introduction to Machine Learning (Tübingen)", phase:0, done:false },
+  { id:3,  name:"Neural Networks: Zero to Hero", phase:0, done:false },
+  { id:4,  name:"CMU Introduction to Deep Learning", phase:0, done:false },
+  { id:5,  name:"NLP Course (Hugging Face)", phase:0, done:false },
+  { id:6,  name:"ChatGPT Prompt Engineering for Developers", phase:0, done:false },
+  { id:7,  name:"Building LLM-Powered Apps", phase:0, done:false },
+
+  // Step 2: Machine Learning
+  { id:8,  name:"Caltech CS156: Learning from Data", phase:1, done:false },
+  { id:9,  name:"Stanford CS229: Machine Learning", phase:1, done:false },
+  { id:10, name:"Making Friends with Machine Learning", phase:1, done:false },
+  { id:11, name:"Applied Machine Learning", phase:1, done:false },
+  { id:12, name:"Introduction to Machine Learning (Tübingen)", phase:1, done:false },
+  { id:13, name:"Machine Learning Lecture (Stefan Harmeling)", phase:1, done:false },
+  { id:14, name:"Statistical Machine Learning (Tübingen)", phase:1, done:false },
+  { id:15, name:"Probabilistic Machine Learning", phase:1, done:false },
+  { id:16, name:"MIT 6.S897: Machine Learning for Healthcare (2019)", phase:1, done:false },
+
+  // Step 3: Deep Learning
+  { id:17, name:"Neural Networks: Zero to Hero", phase:2, done:false },
+  { id:18, name:"MIT: Deep Learning for Art, Aesthetics, and Creativity", phase:2, done:false },
+  { id:19, name:"Stanford CS230: Deep Learning (2018)", phase:2, done:false },
+  { id:20, name:"Introduction to Deep Learning (MIT)", phase:2, done:false },
+  { id:21, name:"CMU Introduction to Deep Learning", phase:2, done:false },
+  { id:22, name:"Deep Unsupervised Learning", phase:2, done:false },
+  { id:23, name:"NYU Deep Learning SP21", phase:2, done:false },
+  { id:24, name:"Foundation Models", phase:2, done:false },
+  { id:25, name:"Deep Learning (Tübingen)", phase:2, done:false },
+
+  // Step 4: NLP
+  { id:26, name:"Natural Language Understanding (2023)", phase:3, done:false },
+  { id:27, name:"Stanford CS25 — Transformers United", phase:3, done:false },
+  { id:28, name:"NLP Course (Hugging Face)", phase:3, done:false },
+  { id:29, name:"CS224N: Natural Language Processing with Deep Learning", phase:3, done:false },
+  { id:30, name:"CMU Neural Networks for NLP", phase:3, done:false },
+  { id:31, name:"CS224U: Natural Language Understanding", phase:3, done:false },
+  { id:32, name:"CMU Advanced NLP 2021/2022/2024", phase:3, done:false },
+  { id:33, name:"Multilingual NLP", phase:3, done:false },
+  { id:34, name:"Advanced NLP", phase:3, done:false },
+
+  // Step 5: Computer Vision
+  { id:35, name:"CS231N: Convolutional Neural Networks for Visual Recognition", phase:4, done:false },
+  { id:36, name:"Deep Learning for Computer Vision (1)", phase:4, done:false },
+  { id:37, name:"Deep Learning for Computer Vision (2)", phase:4, done:false },
+  { id:38, name:"Deep Learning for Computer Vision (neuralearn.ai)", phase:4, done:false },
+
+  // Step 6: Reinforcement Learning
+  { id:39, name:"Deep Reinforcement Learning", phase:5, done:false },
+  { id:40, name:"Reinforcement Learning Lecture Series (DeepMind)", phase:5, done:false },
+  { id:41, name:"Reinforcement Learning (Polytechnique Montreal, Fall 2021)", phase:5, done:false },
+  { id:42, name:"Foundations of Deep RL", phase:5, done:false },
+  { id:43, name:"Stanford CS234: Reinforcement Learning", phase:5, done:false },
+
+  // Step 7: Practical ML & LLM
+  { id:44, name:"LLMOps: Building Real-World Applications With Large Language Models", phase:6, done:false },
+  { id:45, name:"ChatGPT Prompt Engineering for Developers", phase:6, done:false },
+  { id:46, name:"LangChain for LLM Application Development", phase:6, done:false },
+  { id:47, name:"LangChain: Chat with Your Data", phase:6, done:false },
+  { id:48, name:"Building Systems with the ChatGPT API", phase:6, done:false },
+  { id:49, name:"LangChain & Vector Databases in Prod", phase:6, done:false },
+  { id:50, name:"Building LLM-Powered Apps", phase:6, done:false },
+  { id:51, name:"Full Stack LLM Bootcamp", phase:6, done:false },
+  { id:52, name:"Full Stack Deep Learning", phase:6, done:false },
+  { id:53, name:"Machine Learning Engineering for MLOps", phase:6, done:false },
+  { id:54, name:"MIT Introduction to Data-Centric AI", phase:6, done:false },
+
+  // Step 8: Scientific ML
+  { id:55, name:"Parallel Computing and Scientific ML", phase:7, done:false },
+
+  // Step 9: Graph ML
+  { id:56, name:"Machine Learning with Graphs (Stanford)", phase:8, done:false },
+  { id:57, name:"AMMI Geometric Deep Learning Course", phase:8, done:false },
+
+  // Step 10: Multi-Task & Others
+  { id:58, name:"Multi-Task and Meta-Learning (Stanford)", phase:9, done:false },
+  { id:59, name:"MIT Deep Learning in Life Sciences", phase:9, done:false },
+  { id:60, name:"Self-Driving Cars (Tübingen)", phase:9, done:false },
+  { id:61, name:"Advanced Robotics (Berkeley)", phase:9, done:false },
+];
+
+let nextId = 62;
+let filterMode = 'all';
+let editingId = null;
+
+function setFilter(mode, btn) {
+  filterMode = mode;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+function updateStats() {
+  const total = courses.length;
+  const done = courses.filter(c => c.done).length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statDone').textContent = done;
+  document.getElementById('statLeft').textContent = total - done;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+}
+
+function renderAll() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const container = document.getElementById('phasesContainer');
+  container.innerHTML = '';
+  let anyResult = false;
+
+  PHASES.forEach((phase, pi) => {
+    let items = courses.filter(c => c.phase === pi);
+    if (query) items = items.filter(c => c.name.toLowerCase().includes(query));
+    if (filterMode === 'done') items = items.filter(c => c.done);
+    if (filterMode === 'pending') items = items.filter(c => !c.done);
+    if (!items.length) return;
+    anyResult = true;
+
+    const section = document.createElement('div');
+    section.className = 'phase-section';
+    const donePh = items.filter(c => c.done).length;
+
+    section.innerHTML = `
+      <div class="phase-header">
+        <span class="phase-number" style="color:${phase.color};background:${phase.bg}">${phase.tag}</span>
+        <span class="phase-name">${phase.name}</span>
+        <span class="phase-count">${donePh}/${items.length}</span>
+      </div>
+      <div class="phase-line"></div>
+    `;
+
+    items.forEach((course, idx) => {
+      const row = document.createElement('div');
+      row.className = 'course-item' + (course.done ? ' done' : '') + (editingId === course.id ? ' editing' : '');
+      row.innerHTML = `
+        <div class="tick-btn ${course.done ? 'checked' : ''}" onclick="toggle(${course.id})"></div>
+        <span class="course-num">${String(idx + 1).padStart(2,'0')}</span>
+        <span class="course-name">${course.name}</span>
+        <input class="edit-field" id="ef-${course.id}" value="${course.name.replace(/"/g,'&quot;')}" onkeydown="if(event.key==='Enter')saveEdit(${course.id})" />
+        <div class="action-btns">
+          <button class="act-btn edit-btn" onclick="startEdit(${course.id})">edit</button>
+          <button class="act-btn save-btn" onclick="saveEdit(${course.id})">save</button>
+          <button class="act-btn remove-btn" onclick="removeCourse(${course.id})">remove</button>
+        </div>
+      `;
+      section.appendChild(row);
+    });
+    container.appendChild(section);
+  });
+
+  if (!anyResult) {
+    container.innerHTML = '<div class="empty-msg">no courses found</div>';
+  }
+  updateStats();
+}
+
+function toggle(id) {
+  const c = courses.find(x => x.id === id);
+  if (c) c.done = !c.done;
+  renderAll();
+}
+
+function startEdit(id) {
+  editingId = id;
+  renderAll();
+  const ef = document.getElementById('ef-' + id);
+  if (ef) { ef.focus(); ef.select(); }
+}
+
+function saveEdit(id) {
+  const ef = document.getElementById('ef-' + id);
+  if (ef && ef.value.trim()) {
+    const c = courses.find(x => x.id === id);
+    if (c) c.name = ef.value.trim();
+  }
+  editingId = null;
+  renderAll();
+}
+
+function removeCourse(id) {
+  courses = courses.filter(x => x.id !== id);
+  if (editingId === id) editingId = null;
+  renderAll();
+}
+
+function addCourse() {
+  const nameEl = document.getElementById('addName');
+  const phaseEl = document.getElementById('addCat');
+  const name = nameEl.value.trim();
+  if (!name) return;
+  courses.push({ id: nextId++, name, phase: parseInt(phaseEl.value), done: false });
+  nameEl.value = '';
+  renderAll();
+}
+
+document.getElementById('addName').addEventListener('keydown', e => { if (e.key === 'Enter') addCourse(); });
+renderAll();
+</script>
+</body>
+</html>
